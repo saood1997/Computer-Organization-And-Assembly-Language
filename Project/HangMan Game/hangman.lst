@@ -1,0 +1,869 @@
+Microsoft (R) Macro Assembler Version 6.15.8803		    01/03/19 09:09:43
+hangman.asm						     Page 1 - 1
+
+
+				include irvine32.inc
+			      C ; Include file for Irvine32.lib             (Irvine32.inc)
+			      C 
+			      C INCLUDE SmallWin.inc		; MS-Windows prototypes, structures, and constants
+			      C .NOLIST
+			      C .LIST
+			      C 
+			      C .NOLIST
+			      C .LIST
+			      C 
+
+ 00000000			.data
+ 00000000 6A 61 6E 75 61		month1 byte "january",0
+	   72 79 00
+ 00000008 66 65 62 75 61		month2 byte "febuary",0
+	   72 79 00
+ 00000010 6D 61 72 63 68		month3 byte "march",0
+	   00
+ 00000016 61 70 72 69 6C		month4 byte "april",0
+	   00
+ 0000001C 6D 61 79 00			month5 byte "may",0
+ 00000020 6A 75 6E 65 00		month6 byte "june",0
+ 00000025 6A 75 6C 79 00		month7 byte "july",0
+ 0000002A 61 75 67 75 73		month8 byte "august",0
+	   74 00
+ 00000031 73 65 70 74 65		month9 byte "september",0
+	   6D 62 65 72 00
+ 0000003B 6F 63 74 62 65		month10 byte "octber",0
+	   72 00
+ 00000042 6E 6F 76 65 6D		month11 byte "november",0
+	   62 65 72 00
+ 0000004B 64 65 63 65 6D		month12 byte "december",0
+	   62 65 72 00
+ 00000054 00000000			garbage dword ?
+ 00000058 00				count byte 0
+ 00000059  0000000A [			month byte 10 dup(0)
+	    00
+	   ]
+ 00000063  0000000A [			monthC byte 10 dup(0)
+	    00
+	   ]
+ 0000006D  0000000A [			hide_month byte 10 dup('-')
+	    2D
+	   ]
+					
+ 00000077 40 40 40 40 40		msg1 byte "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@",0
+	   40 40 40 40 40
+	   40 40 40 40 40
+	   40 40 40 40 40
+	   40 40 40 40 40
+	   40 40 40 40 40
+	   40 40 40 40 40
+	   40 40 40 40 40
+	   40 40 40 00
+ 000000A3 48 61 6E 67 6D		msg2 byte "Hangman Game!",0
+	   61 6E 20 47 61
+	   6D 65 21 00
+ 000000B1 59 6F 75 20 68		msg3 byte "You have ",0
+	   61 76 65 20 00
+ 000000BB 20 74 72 69 65		msg4 byte " tries to try and guess the month.",0
+	   73 20 74 6F 20
+	   74 72 79 20 61
+	   6E 64 20 67 75
+	   65 73 73 20 74
+	   68 65 20 6D 6F
+	   6E 74 68 2E 00
+ 000000DE 50 6C 61 79 21		msg5 byte "Play!",0		
+	   00
+					
+ 000000E4 47 75 65 73 73		msg6 byte "Guess a letter: ",0
+	   20 61 20 6C 65
+	   74 74 65 72 3A
+	   20 00
+ 000000F5 49 6E 63 6F 72		msg7 byte "Incorrect letter.",0
+	   72 65 63 74 20
+	   6C 65 74 74 65
+	   72 2E 00
+ 00000107 4E 49 43 45 21		msg8 byte "NICE! You guess a letter",0
+	   20 59 6F 75 20
+	   67 75 65 73 73
+	   20 61 20 6C 65
+	   74 74 65 72 00
+ 00000120 43 6F 6E 67 72		msg9 byte "Congratulations! You got it!",0
+	   61 74 75 6C 61
+	   74 69 6F 6E 73
+	   21 20 59 6F 75
+	   20 67 6F 74 20
+	   69 74 21 00
+ 0000013D 54 68 65 20 6D		msg10 byte "The month is ", 0
+	   6F 6E 74 68 20
+	   69 73 20 00
+ 0000014B 4E 4F 4F 4F 4F		msg11 byte "NOOOOOOO!...you've been hanged.",0
+	   4F 4F 4F 21 2E
+	   2E 2E 79 6F 75
+	   27 76 65 20 62
+	   65 65 6E 20 68
+	   61 6E 67 65 64
+	   2E 00
+ 0000016B 54 68 65 20 6D		msg12 byte "The month was ", 0
+	   6F 6E 74 68 20
+	   77 61 73 20 00
+ 0000017A 70 6C 61 79 20		msg13 byte "play again     y/n", 0
+	   61 67 61 69 6E
+	   20 20 20 20 20
+	   79 2F 6E 00
+					
+ 0000018D 03				numTry byte 3
+ 0000018E 00				letter byte 0
+ 0000018F 00				flag1 byte 0
+ 00000190 00				flag2 byte 0
+					
+					
+ 00000000			.code
+
+ 00000000			secretMonth proc
+								; random function and count size of string
+ 00000000  33 DB			xor ebx,ebx
+ 00000002  66| 0F A4 C3			shld bx, ax, 4
+	   04
+ 00000007  D1 C8			ror eax,1
+ 00000009  A3 00000054 R		mov garbage, eax
+ 0000000E  33 F6			xor esi, esi
+ 00000010  66| 83 FB 00			cmp bx, 0
+ 00000014  0F 84 00000104		je L0
+ 0000001A  66| 83 FB 0D			cmp bx, 13
+ 0000001E  0F 84 000001A2		je L13
+ 00000024  66| 83 FB 0E			cmp bx, 14
+ 00000028  0F 84 00000208		je L14
+ 0000002E  66| 83 FB 0F			cmp bx, 15
+ 00000032  0F 84 00000268		je L15
+ 00000038  66| 83 FB 01			cmp bx, 1
+ 0000003C  75 32			jne L1
+ 0000003E  BE 00000000 R			mov esi, offset month1
+ 00000043  C6 05 00000058 R			mov count, sizeof month1
+	   08
+ 0000004A  FE 0D 00000058 R			dec count
+ 00000050  0F B6 0D				movzx ecx, count
+	   00000058 R
+ 00000057  33 FF				xor edi, edi
+ 00000059					arrayC1:
+ 00000059  8A 06					mov al, [esi]
+ 0000005B  88 87 00000059 R				mov month[edi], al
+ 00000061  88 87 00000063 R				mov monthC[edi], al
+ 00000067  47						inc edi
+ 00000068  46						inc esi
+ 00000069  E2 EE				Loop arrayC1
+						
+ 0000006B  E9 0000025D			jmp last
+ 00000070				L1:
+ 00000070  66| 83 FB 02			cmp bx, 2
+ 00000074  75 32			jne L2
+ 00000076  BE 00000008 R			mov esi, offset month2
+ 0000007B  C6 05 00000058 R			mov count, sizeof month2
+	   08
+ 00000082  FE 0D 00000058 R			dec count
+ 00000088  0F B6 0D				movzx ecx, count
+	   00000058 R
+ 0000008F  33 FF				xor edi, edi
+ 00000091					arrayC2:
+ 00000091  8A 06					mov al, [esi]
+ 00000093  88 87 00000059 R				mov month[edi], al
+ 00000099  88 87 00000063 R				mov monthC[edi], al
+ 0000009F  47						inc edi
+ 000000A0  46						inc esi
+ 000000A1  E2 EE				Loop arrayC2
+ 000000A3  E9 00000225			jmp last
+ 000000A8				L2:
+ 000000A8  66| 83 FB 03			cmp bx, 3
+ 000000AC  75 32			jne L3
+ 000000AE  BE 00000010 R			mov esi, offset month3
+ 000000B3  C6 05 00000058 R			mov count, sizeof month3
+	   06
+ 000000BA  FE 0D 00000058 R			dec count
+ 000000C0  0F B6 0D				movzx ecx, count
+	   00000058 R
+ 000000C7  33 FF				xor edi, edi
+ 000000C9					arrayC3:
+ 000000C9  8A 06					mov al, [esi]
+ 000000CB  88 87 00000059 R				mov month[edi], al
+ 000000D1  88 87 00000063 R				mov monthC[edi], al
+ 000000D7  47						inc edi
+ 000000D8  46						inc esi
+ 000000D9  E2 EE				Loop arrayC3
+ 000000DB  E9 000001ED			jmp last
+ 000000E0				L3:
+ 000000E0  66| 83 FB 04			cmp bx, 4
+ 000000E4  75 32			jne L4
+ 000000E6  BE 00000016 R			mov esi, offset month4
+ 000000EB  C6 05 00000058 R			mov count, sizeof month4
+	   06
+ 000000F2  FE 0D 00000058 R			dec count
+ 000000F8  0F B6 0D				movzx ecx, count
+	   00000058 R
+ 000000FF  33 FF				xor edi, edi
+ 00000101					arrayC4:
+ 00000101  8A 06					mov al, [esi]
+ 00000103  88 87 00000059 R				mov month[edi], al
+ 00000109  88 87 00000063 R				mov monthC[edi], al
+ 0000010F  47						inc edi
+ 00000110  46						inc esi
+ 00000111  E2 EE				Loop arrayC4
+ 00000113  E9 000001B5			jmp last
+ 00000118				L4:
+ 00000118  66| 83 FB 05			cmp bx, 5
+ 0000011C  75 32			jne L5
+ 0000011E				L0:
+ 0000011E  BE 0000001C R			mov esi, offset month5
+ 00000123  C6 05 00000058 R			mov count, sizeof month5
+	   04
+ 0000012A  FE 0D 00000058 R			dec count
+ 00000130  0F B6 0D				movzx ecx, count
+	   00000058 R
+ 00000137  33 FF				xor edi, edi
+ 00000139					arrayC5:
+ 00000139  8A 06					mov al, [esi]
+ 0000013B  88 87 00000063 R				mov monthC[edi], al
+ 00000141  88 87 00000059 R				mov month[edi], al
+ 00000147  47						inc edi
+ 00000148  46						inc esi
+ 00000149  E2 EE				Loop arrayC5
+ 0000014B  E9 0000017D			jmp last
+ 00000150				L5:
+ 00000150  66| 83 FB 06			cmp bx, 6
+ 00000154  75 32			jne L6
+ 00000156  BE 00000020 R			mov esi, offset month6
+ 0000015B  C6 05 00000058 R			mov count, sizeof month6
+	   05
+ 00000162  FE 0D 00000058 R			dec count
+ 00000168  0F B6 0D				movzx ecx, count
+	   00000058 R
+ 0000016F  33 FF				xor edi, edi
+ 00000171					arrayC6:
+ 00000171  8A 06					mov al, [esi]
+ 00000173  88 87 00000063 R				mov monthC[edi], al
+ 00000179  88 87 00000059 R				mov month[edi], al
+ 0000017F  47						inc edi
+ 00000180  46						inc esi
+ 00000181  E2 EE				Loop arrayC6
+ 00000183  E9 00000145			jmp last
+ 00000188				L6:
+ 00000188  66| 83 FB 07			cmp bx, 7
+ 0000018C  75 32			jne L7
+ 0000018E  BE 00000025 R			mov esi, offset month7
+ 00000193  C6 05 00000058 R			mov count, sizeof month7
+	   05
+ 0000019A  FE 0D 00000058 R			dec count
+ 000001A0  0F B6 0D				movzx ecx, count
+	   00000058 R
+ 000001A7  33 FF				xor edi, edi
+ 000001A9					arrayC7:
+ 000001A9  8A 06					mov al, [esi]
+ 000001AB  88 87 00000063 R				mov monthC[edi], al
+ 000001B1  88 87 00000059 R				mov month[edi], al
+ 000001B7  47						inc edi
+ 000001B8  46						inc esi
+ 000001B9  E2 EE				Loop arrayC7
+ 000001BB  E9 0000010D			jmp last
+ 000001C0				L7:
+ 000001C0  66| 83 FB 08			cmp bx, 8
+ 000001C4  75 32			jne L8
+ 000001C6				L13:
+ 000001C6  BE 0000002A R			mov esi, offset month8
+ 000001CB  C6 05 00000058 R			mov count, sizeof month8
+	   07
+ 000001D2  FE 0D 00000058 R			dec count
+ 000001D8  0F B6 0D				movzx ecx, count
+	   00000058 R
+ 000001DF  33 FF				xor edi, edi
+ 000001E1					arrayC8:
+ 000001E1  8A 06					mov al, [esi]
+ 000001E3  88 87 00000063 R				mov monthC[edi], al
+ 000001E9  88 87 00000059 R				mov month[edi], al
+ 000001EF  47						inc edi
+ 000001F0  46						inc esi
+ 000001F1  E2 EE				Loop arrayC8
+ 000001F3  E9 000000D5			jmp last
+ 000001F8				L8:
+ 000001F8  66| 83 FB 09			cmp bx, 9
+ 000001FC  75 32			jne L9
+ 000001FE  BE 00000031 R			mov esi, offset month9
+ 00000203  C6 05 00000058 R			mov count, sizeof month9
+	   0A
+ 0000020A  FE 0D 00000058 R			dec count
+ 00000210  0F B6 0D				movzx ecx, count
+	   00000058 R
+ 00000217  33 FF				xor edi, edi
+ 00000219					arrayC9:
+ 00000219  8A 06					mov al, [esi]
+ 0000021B  88 87 00000063 R				mov monthC[edi], al
+ 00000221  88 87 00000059 R				mov month[edi], al
+ 00000227  47						inc edi
+ 00000228  46						inc esi
+ 00000229  E2 EE				Loop arrayC9
+ 0000022B  E9 0000009D			jmp last
+						
+ 00000230				L9:
+ 00000230  66| 83 FB 0A			cmp bx, 10
+ 00000234  75 2F			jne L10
+ 00000236				L14:
+ 00000236  BE 0000003B R			mov esi, offset month10
+ 0000023B  C6 05 00000058 R			mov count, sizeof month10
+	   07
+ 00000242  FE 0D 00000058 R			dec count
+ 00000248  0F B6 0D				movzx ecx, count
+	   00000058 R
+ 0000024F  33 FF				xor edi, edi
+ 00000251					arrayC10:
+ 00000251  8A 06					mov al, [esi]
+ 00000253  88 87 00000063 R				mov monthC[edi], al
+ 00000259  88 87 00000059 R				mov month[edi], al
+ 0000025F  47						inc edi
+ 00000260  46						inc esi
+ 00000261  E2 EE				Loop arrayC10
+ 00000263  EB 68			jmp last
+					
+ 00000265				L10:
+ 00000265  66| 83 FB 0B			cmp bx,11
+ 00000269  75 2F			jne L11
+ 0000026B  BE 00000042 R			mov esi, offset month11
+ 00000270  C6 05 00000058 R			mov count, sizeof month11
+	   09
+ 00000277  FE 0D 00000058 R			dec count
+ 0000027D  0F B6 0D				movzx ecx, count
+	   00000058 R
+ 00000284  33 FF				xor edi, edi
+ 00000286					arrayC11:
+ 00000286  8A 06					mov al, [esi]
+ 00000288  88 87 00000059 R				mov month[edi], al
+ 0000028E  88 87 00000063 R				mov monthC[edi], al
+ 00000294  47						inc edi
+ 00000295  46						inc esi
+ 00000296  E2 EE				Loop arrayC11
+ 00000298  EB 33			jmp last
+					
+ 0000029A				L11:
+ 0000029A  66| 83 FB 0C			cmp bx, 12
+ 0000029E  75 2D			jne L12
+ 000002A0				L15:
+ 000002A0  BE 0000004B R			mov esi, offset month12
+ 000002A5  C6 05 00000058 R			mov count, sizeof month12
+	   09
+ 000002AC  FE 0D 00000058 R			dec count
+ 000002B2  0F B6 0D				movzx ecx, count
+	   00000058 R
+ 000002B9  33 FF				xor edi, edi
+ 000002BB					arrayC12:
+ 000002BB  8A 06					mov al, [esi]
+ 000002BD  88 87 00000063 R				mov monthC[edi], al
+ 000002C3  88 87 00000059 R				mov month[edi], al
+ 000002C9  47						inc edi
+ 000002CA  46						inc esi
+ 000002CB  E2 EE				Loop arrayC12
+ 000002CD				last:
+ 000002CD				L12:
+					
+ 000002CD  C3				ret
+ 000002CE			secretMonth endp
+ 000002CE			hideMonth proc
+ 000002CE  8A 0D 00000058 R		mov cl, count
+ 000002D4  33 F6			xor esi, esi
+ 000002D6				hide:
+ 000002D6  8A 86 0000006D R			mov al, hide_month[esi]
+ 000002DC  E8 00000000 E			call writechar
+ 000002E1  46					inc esi
+ 000002E2  E2 F2			Loop hide
+ 000002E4  E8 00000000 E		call crlf
+ 000002E9  C3				ret
+					
+ 000002EA			hideMonth endp
+ 000002EA			mainMenu proc
+ 000002EA  E8 00000000 E		call crlf
+ 000002EF  BA 00000077 R		mov edx, offset msg1
+ 000002F4  E8 00000000 E		call writestring
+ 000002F9  E8 00000000 E		call crlf
+ 000002FE  E8 00000000 E		call crlf
+ 00000303  BA 000000A3 R		mov edx, offset msg2
+ 00000308  E8 00000000 E		call writestring
+ 0000030D  E8 00000000 E		call crlf
+ 00000312  E8 00000000 E		call crlf
+ 00000317  BA 000000B1 R		mov edx, offset msg3
+ 0000031C  E8 00000000 E		call writestring
+					
+ 00000321  33 C0			xor eax,eax
+ 00000323  A0 0000018D R		mov al, numTry
+ 00000328  E8 00000000 E		call writedec
+					
+ 0000032D  BA 000000BB R		mov edx, offset msg4
+ 00000332  E8 00000000 E		call writestring
+ 00000337  E8 00000000 E		call crlf
+ 0000033C  E8 00000000 E		call crlf
+ 00000341  BA 00000077 R		mov edx, offset msg1
+ 00000346  E8 00000000 E		call writestring
+ 0000034B  E8 00000000 E		call crlf
+ 00000350  E8 00000000 E		call crlf
+ 00000355  C3				ret
+ 00000356			mainMenu endp
+
+ 00000356			LoopWhile proc
+					
+ 00000356  8A 0D 0000018D R		mov cl, numTry
+					.while cl != 0
+ 00000361  E8 FFFFFF84				call mainMenu
+ 00000366  E8 FFFFFF63				call hideMonth
+ 0000036B  33 C0				xor eax,eax
+ 0000036D  BA 000000E4 R			mov edx, offset msg6
+ 00000372  E8 00000000 E			call writestring
+ 00000377  E8 00000000 E			call readchar
+ 0000037C  E8 00000000 E			call crlf
+ 00000381  E8 00000000 E			call crlf
+ 00000386  A2 0000018E R			mov letter, al
+ 0000038B  E8 000000DD				call checkGuess
+ 00000390  A0 00000190 R			mov al, flag2
+ 00000395  3C 00				cmp al, 0
+ 00000397  74 1D				jz match
+ 00000399  BA 000000F5 R				mov edx, offset msg7
+ 0000039E  E8 00000000 E				call writestring
+ 000003A3  E8 00000000 E				call crlf
+ 000003A8  A0 0000018D R				mov al, numTry
+ 000003AD  FE C8					dec al
+ 000003AF  A2 0000018D R				mov numTry, al
+ 000003B4  EB 0F					jmp nextt
+						
+ 000003B6					match:
+ 000003B6  BA 00000107 R				mov edx, offset msg8
+ 000003BB  E8 00000000 E				call writestring
+ 000003C0  E8 00000000 E				call crlf
+ 000003C5					nextt:	
+ 000003C5  E8 000000E0				call CompareString
+ 000003CA  A0 0000018F R			mov al, flag1
+ 000003CF  3C 01				cmp al, 1
+ 000003D1  75 3B				jnz notBreak
+ 000003D3  BA 00000120 R				mov edx, offset msg9
+ 000003D8  E8 00000000 E				call writestring
+ 000003DD  E8 00000000 E				call crlf
+ 000003E2  E8 FFFFFF03					call mainMenu
+ 000003E7  BA 0000013D R				mov edx, offset msg10
+ 000003EC  E8 00000000 E				call writestring
+ 000003F1  8A 0D 00000058 R				mov cl, count
+ 000003F7  33 F6					xor esi,esi
+ 000003F9						search:
+ 000003F9  8A 86 00000059 R					mov al, month[esi]
+ 000003FF  E8 00000000 E					call writechar
+ 00000404  46							inc esi
+ 00000405  E2 F2					Loop search
+ 00000407  E8 00000000 E				call crlf
+ 0000040C  EB 5E					jmp break
+						
+ 0000040E					notBreak:
+						
+ 0000040E  A0 0000018D R			mov al, numTry
+ 00000413  3C 00				cmp al, 0
+ 00000415  75 39				jnz continue
+ 00000417  BA 0000014B R				mov edx, offset msg11
+ 0000041C  E8 00000000 E				call writestring
+ 00000421  E8 00000000 E				call crlf
+ 00000426  E8 FFFFFEBF					call mainMenu
+ 0000042B  BA 0000016B R				mov edx, offset msg12
+ 00000430  E8 00000000 E				call writestring
+ 00000435  8A 0D 00000058 R				mov cl, count
+ 0000043B  33 F6					xor esi,esi
+ 0000043D						search1:
+ 0000043D  8A 86 00000059 R					mov al, month[esi]
+ 00000443  E8 00000000 E					call writechar
+ 00000448  46							inc esi
+ 00000449  E2 F2					Loop search1
+ 0000044B  E8 00000000 E				call crlf
+ 00000450					continue:
+ 00000450  8A 0D 0000018D R			mov cl, numTry
+ 00000456  C6 05 0000018F R			mov flag1,0
+	   00
+ 0000045D  C6 05 00000190 R			mov flag2,0
+	   00
+					.endw
+					
+ 0000046C				break:
+ 0000046C  C3				ret
+ 0000046D			LoopWhile endp
+
+ 0000046D			checkGuess proc
+ 0000046D  33 F6			xor esi,esi
+ 0000046F  33 FF			xor edi,edi
+ 00000471  A0 0000018E R		mov al, letter
+ 00000476  0F B6 3D			movzx edi, count
+	   00000058 R
+					.while edi != esi
+ 0000047F  3A 86 00000063 R			cmp al, monthC[esi]
+ 00000485  74 0E				jz next1
+ 00000487  46					inc esi
+					.endw
+ 0000048C  C6 05 00000190 R		mov flag2, 1
+	   01
+ 00000493  EB 14			Jmp next3
+ 00000495				next1:
+ 00000495  33 DB				xor ebx,ebx
+ 00000497  8A 9E 0000006D R			mov bl, hide_month[esi]
+ 0000049D  88 86 0000006D R			mov hide_month[esi], al
+ 000004A3  88 9E 00000063 R			mov monthC[esi], bl
+ 000004A9				next3:
+ 000004A9  C3				ret
+ 000004AA			checkGuess endp
+
+ 000004AA			CompareString proc
+ 000004AA  33 FE			xor edi,esi
+ 000004AC  33 F6			xor esi,esi
+ 000004AE  0F B6 3D			movzx edi, count
+	   00000058 R
+					.while edi != esi
+ 000004B7  33 C0				xor eax,eax
+ 000004B9  8A 86 0000006D R			mov al, hide_month[esi]
+ 000004BF  3A 86 00000059 R			cmp al, month[esi]
+ 000004C5  75 0C				jnz next
+ 000004C7  46					inc esi
+					.endw
+ 000004CC  C6 05 0000018F R		mov flag1, 1
+	   01
+ 000004D3				next:
+ 000004D3  C3				ret
+ 000004D4			CompareString endp
+
+ 000004D4			blankArray proc
+ 000004D4  33 C9			xor ecx,ecx
+ 000004D6  33 F6			xor esi, esi
+ 000004D8  B9 0000000A			mov ecx, 10
+ 000004DD				blank:
+ 000004DD  C6 86 0000006D R			mov hide_month[esi], '-'
+	   2D
+ 000004E4  C6 86 00000059 R			mov month[esi], 0
+	   00
+ 000004EB  C6 86 00000063 R			mov monthC[esi],0
+	   00
+						
+ 000004F2  46					inc esi
+ 000004F3  E2 E8			Loop blank
+ 000004F5  C6 05 00000058 R		mov count, 0
+	   00
+ 000004FC  C6 05 0000018E R		mov letter, 0
+	   00
+ 00000503  C6 05 0000018D R		mov numtry, 3
+	   03
+ 0000050A  C6 05 0000018F R		mov flag1, 0
+	   00
+ 00000511  C6 05 00000190 R		mov flag2, 0
+	   00
+ 00000518  A1 00000054 R		mov eax, garbage
+ 0000051D  C3				ret
+ 0000051E			blankArray endp
+ 0000051E			main proc
+					
+ 0000051E				again:
+ 0000051E  E8 00000000 E		call crlf
+ 00000523  BA 000000DE R		mov edx, offset msg5
+ 00000528  E8 00000000 E		call writestring
+ 0000052D  E8 00000000 E		call crlf
+ 00000532  33 F6			xor esi,esi
+ 00000534  33 FF			xor edi,edi
+ 00000536  E8 FFFFFAC5			call secretMonth
+ 0000053B  E8 FFFFFE16			call LoopWhile
+					
+ 00000540  BA 0000017A R		mov edx, offset msg13
+ 00000545  E8 00000000 E		call writestring
+ 0000054A  E8 00000000 E		call readchar
+ 0000054F  3C 79			cmp al, 'y'
+ 00000551  75 07			jnz notagain
+					invoke blankArray
+ 00000558  EB C4			jmp again
+ 0000055A				notagain:
+				exit
+ 00000561			main endp
+				end main
+Microsoft (R) Macro Assembler Version 6.15.8803		    01/03/19 09:09:43
+hangman.asm						     Symbols 2 - 1
+
+
+
+
+Structures and Unions:
+
+                N a m e                  Size
+                                         Offset      Type
+
+CONSOLE_CURSOR_INFO  . . . . . .	 00000005
+  dwSize . . . . . . . . . . . .	 00000000	 DWord
+  bVisible . . . . . . . . . . .	 00000004	 Byte
+CONSOLE_SCREEN_BUFFER_INFO . . .	 00000016
+  dwSize . . . . . . . . . . . .	 00000000	 DWord
+  dwCursorPos  . . . . . . . . .	 00000004	 DWord
+  wAttributes  . . . . . . . . .	 00000008	 Word
+  srWindow . . . . . . . . . . .	 0000000A	 QWord
+  maxWinSize . . . . . . . . . .	 00000012	 DWord
+COORD  . . . . . . . . . . . . .	 00000004
+  X  . . . . . . . . . . . . . .	 00000000	 Word
+  Y  . . . . . . . . . . . . . .	 00000002	 Word
+FILETIME . . . . . . . . . . . .	 00000008
+  loDateTime . . . . . . . . . .	 00000000	 DWord
+  hiDateTime . . . . . . . . . .	 00000004	 DWord
+SMALL_RECT . . . . . . . . . . .	 00000008
+  Left . . . . . . . . . . . . .	 00000000	 Word
+  Top  . . . . . . . . . . . . .	 00000002	 Word
+  Right  . . . . . . . . . . . .	 00000004	 Word
+  Bottom . . . . . . . . . . . .	 00000006	 Word
+SYSTEMTIME . . . . . . . . . . .	 00000010
+  wYear  . . . . . . . . . . . .	 00000000	 Word
+  wMonth . . . . . . . . . . . .	 00000002	 Word
+  wDayOfWeek . . . . . . . . . .	 00000004	 Word
+  wDay . . . . . . . . . . . . .	 00000006	 Word
+  wHour  . . . . . . . . . . . .	 00000008	 Word
+  wMinute  . . . . . . . . . . .	 0000000A	 Word
+  wSecond  . . . . . . . . . . .	 0000000C	 Word
+  wMilliseconds  . . . . . . . .	 0000000E	 Word
+
+
+Segments and Groups:
+
+                N a m e                 Size     Length   Align   Combine Class
+
+FLAT . . . . . . . . . . . . . .	GROUP
+STACK  . . . . . . . . . . . . .	32 Bit	 00001000 DWord	  Stack	  'STACK'	 
+_DATA  . . . . . . . . . . . . .	32 Bit	 00000191 DWord	  Public  'DATA'	
+_TEXT  . . . . . . . . . . . . .	32 Bit	 00000561 DWord	  Public  'CODE'	
+
+
+Procedures,  parameters and locals:
+
+                N a m e                 Type     Value    Attr
+
+CloseHandle  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ClrScr . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+CompareString  . . . . . . . . .	P Near	 000004AA _TEXT	Length= 0000002A Public STDCALL
+  next . . . . . . . . . . . . .	L Near	 000004D3 _TEXT	
+CreateFileA  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Crlf . . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Delay  . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+DumpMem  . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+DumpRegs . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ExitProcess  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+FlushConsoleInputBuffer  . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetCommandTail . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetConsoleCP . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetConsoleCursorInfo . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetConsoleMode . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetConsoleScreenBufferInfo . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetDateTime  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetLocalTime . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetMseconds  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetNumberOfConsoleInputEvents  .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetStdHandle . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetSystemTime  . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetTickCount . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Gotoxy . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+IsDigit  . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+LoopWhile  . . . . . . . . . . .	P Near	 00000356 _TEXT	Length= 00000117 Public STDCALL
+  match  . . . . . . . . . . . .	L Near	 000003B6 _TEXT	
+  nextt  . . . . . . . . . . . .	L Near	 000003C5 _TEXT	
+  search . . . . . . . . . . . .	L Near	 000003F9 _TEXT	
+  notBreak . . . . . . . . . . .	L Near	 0000040E _TEXT	
+  search1  . . . . . . . . . . .	L Near	 0000043D _TEXT	
+  continue . . . . . . . . . . .	L Near	 00000450 _TEXT	
+  break  . . . . . . . . . . . .	L Near	 0000046C _TEXT	
+PeekConsoleInputA  . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Random32 . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+RandomRange  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Randomize  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ReadChar . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ReadConsoleA . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ReadConsoleInputA  . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ReadFile . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ReadHex  . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ReadInt  . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ReadString . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+SetConsoleCursorInfo . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+SetConsoleCursorPosition . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+SetConsoleMode . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+SetConsoleScreenBufferSize . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+SetConsoleTextAttribute  . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+SetConsoleTitleA . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+SetConsoleWindowInfo . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+SetFilePointer . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+SetTextColor . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Sleep  . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Str_compare  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Str_copy . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Str_length . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Str_trim . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Str_ucase  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+SystemTimeToFileTime . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WaitMsg  . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteBin . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteChar  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteConsoleA  . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteConsoleOutputAttribute  . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteConsoleOutputCharacterA . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteDec . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteFile  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteHex . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteInt . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteString  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+blankArray . . . . . . . . . . .	P Near	 000004D4 _TEXT	Length= 0000004A Public STDCALL
+  blank  . . . . . . . . . . . .	L Near	 000004DD _TEXT	
+checkGuess . . . . . . . . . . .	P Near	 0000046D _TEXT	Length= 0000003D Public STDCALL
+  next1  . . . . . . . . . . . .	L Near	 00000495 _TEXT	
+  next3  . . . . . . . . . . . .	L Near	 000004A9 _TEXT	
+hideMonth  . . . . . . . . . . .	P Near	 000002CE _TEXT	Length= 0000001C Public STDCALL
+  hide . . . . . . . . . . . . .	L Near	 000002D6 _TEXT	
+mainMenu . . . . . . . . . . . .	P Near	 000002EA _TEXT	Length= 0000006C Public STDCALL
+main . . . . . . . . . . . . . .	P Near	 0000051E _TEXT	Length= 00000043 Public STDCALL
+  again  . . . . . . . . . . . .	L Near	 0000051E _TEXT	
+  notagain . . . . . . . . . . .	L Near	 0000055A _TEXT	
+secretMonth  . . . . . . . . . .	P Near	 00000000 _TEXT	Length= 000002CE Public STDCALL
+  arrayC1  . . . . . . . . . . .	L Near	 00000059 _TEXT	
+  L1 . . . . . . . . . . . . . .	L Near	 00000070 _TEXT	
+  arrayC2  . . . . . . . . . . .	L Near	 00000091 _TEXT	
+  L2 . . . . . . . . . . . . . .	L Near	 000000A8 _TEXT	
+  arrayC3  . . . . . . . . . . .	L Near	 000000C9 _TEXT	
+  L3 . . . . . . . . . . . . . .	L Near	 000000E0 _TEXT	
+  arrayC4  . . . . . . . . . . .	L Near	 00000101 _TEXT	
+  L4 . . . . . . . . . . . . . .	L Near	 00000118 _TEXT	
+  L0 . . . . . . . . . . . . . .	L Near	 0000011E _TEXT	
+  arrayC5  . . . . . . . . . . .	L Near	 00000139 _TEXT	
+  L5 . . . . . . . . . . . . . .	L Near	 00000150 _TEXT	
+  arrayC6  . . . . . . . . . . .	L Near	 00000171 _TEXT	
+  L6 . . . . . . . . . . . . . .	L Near	 00000188 _TEXT	
+  arrayC7  . . . . . . . . . . .	L Near	 000001A9 _TEXT	
+  L7 . . . . . . . . . . . . . .	L Near	 000001C0 _TEXT	
+  L13  . . . . . . . . . . . . .	L Near	 000001C6 _TEXT	
+  arrayC8  . . . . . . . . . . .	L Near	 000001E1 _TEXT	
+  L8 . . . . . . . . . . . . . .	L Near	 000001F8 _TEXT	
+  arrayC9  . . . . . . . . . . .	L Near	 00000219 _TEXT	
+  L9 . . . . . . . . . . . . . .	L Near	 00000230 _TEXT	
+  L14  . . . . . . . . . . . . .	L Near	 00000236 _TEXT	
+  arrayC10 . . . . . . . . . . .	L Near	 00000251 _TEXT	
+  L10  . . . . . . . . . . . . .	L Near	 00000265 _TEXT	
+  arrayC11 . . . . . . . . . . .	L Near	 00000286 _TEXT	
+  L11  . . . . . . . . . . . . .	L Near	 0000029A _TEXT	
+  L15  . . . . . . . . . . . . .	L Near	 000002A0 _TEXT	
+  arrayC12 . . . . . . . . . . .	L Near	 000002BB _TEXT	
+  last . . . . . . . . . . . . .	L Near	 000002CD _TEXT	
+  L12  . . . . . . . . . . . . .	L Near	 000002CD _TEXT	
+
+
+Symbols:
+
+                N a m e                 Type     Value    Attr
+
+@CodeSize  . . . . . . . . . . .	Number	 00000000h   
+@DataSize  . . . . . . . . . . .	Number	 00000000h   
+@Interface . . . . . . . . . . .	Number	 00000003h   
+@Model . . . . . . . . . . . . .	Number	 00000007h   
+@code  . . . . . . . . . . . . .	Text   	 _TEXT
+@data  . . . . . . . . . . . . .	Text   	 FLAT
+@fardata?  . . . . . . . . . . .	Text   	 FLAT
+@fardata . . . . . . . . . . . .	Text   	 FLAT
+@stack . . . . . . . . . . . . .	Text   	 FLAT
+CREATE_ALWAYS  . . . . . . . . .	Number	 00000002h   
+CREATE_NEW . . . . . . . . . . .	Number	 00000001h   
+CreateFile . . . . . . . . . . .	Text   	 CreateFileA
+DO_NOT_SHARE . . . . . . . . . .	Number	 00000000h   
+ENABLE_ECHO_INPUT  . . . . . . .	Number	 00000004h   
+ENABLE_LINE_INPUT  . . . . . . .	Number	 00000002h   
+ENABLE_MOUSE_INPUT . . . . . . .	Number	 00000010h   
+ENABLE_PROCESSED_INPUT . . . . .	Number	 00000001h   
+ENABLE_PROCESSED_OUTPUT  . . . .	Number	 00000001h   
+ENABLE_WINDOW_INPUT  . . . . . .	Number	 00000008h   
+ENABLE_WRAP_AT_EOL_OUTPUT  . . .	Number	 00000002h   
+FALSE  . . . . . . . . . . . . .	Number	 00000000h   
+FILE_APPEND_DATA . . . . . . . .	Number	 00000004h   
+FILE_ATTRIBUTE_ARCHIVE . . . . .	Number	 00000020h   
+FILE_ATTRIBUTE_COMPRESSED  . . .	Number	 00000800h   
+FILE_ATTRIBUTE_DEVICE  . . . . .	Number	 00000040h   
+FILE_ATTRIBUTE_DIRECTORY . . . .	Number	 00000010h   
+FILE_ATTRIBUTE_ENCRYPTED . . . .	Number	 00004000h   
+FILE_ATTRIBUTE_HIDDEN  . . . . .	Number	 00000002h   
+FILE_ATTRIBUTE_NORMAL  . . . . .	Number	 00000080h   
+FILE_ATTRIBUTE_NOT_CONTENT_INDEXED .	Number	 00002000h   
+FILE_ATTRIBUTE_OFFLINE . . . . .	Number	 00001000h   
+FILE_ATTRIBUTE_READONLY  . . . .	Number	 00000001h   
+FILE_ATTRIBUTE_REPARSE_POINT . .	Number	 00000400h   
+FILE_ATTRIBUTE_SPARSE_FILE . . .	Number	 00000200h   
+FILE_ATTRIBUTE_SYSTEM  . . . . .	Number	 00000004h   
+FILE_ATTRIBUTE_TEMPORARY . . . .	Number	 00000100h   
+FILE_BEGIN . . . . . . . . . . .	Number	 00000000h   
+FILE_CURRENT . . . . . . . . . .	Number	 00000001h   
+FILE_DELETE_CHILD  . . . . . . .	Number	 00000040h   
+FILE_END . . . . . . . . . . . .	Number	 00000002h   
+FILE_READ_DATA . . . . . . . . .	Number	 00000001h   
+FILE_SHARE_DELETE  . . . . . . .	Number	 00000004h   
+FILE_SHARE_READ  . . . . . . . .	Number	 00000001h   
+FILE_SHARE_WRITE . . . . . . . .	Number	 00000002h   
+FILE_WRITE_DATA  . . . . . . . .	Number	 00000002h   
+FOCUS_EVENT  . . . . . . . . . .	Number	 00000010h   
+GENERIC_ALL  . . . . . . . . . .	Number	 10000000h   
+GENERIC_EXECUTE  . . . . . . . .	Number	 20000000h   
+GENERIC_READ . . . . . . . . . .	Number	 -80000000h   
+GENERIC_WRITE  . . . . . . . . .	Number	 40000000h   
+INVALID_HANDLE_VALUE . . . . . .	Number	 -00000001h   
+KEY_EVENT  . . . . . . . . . . .	Number	 00000001h   
+MENU_EVENT . . . . . . . . . . .	Number	 00000008h   
+MOUSE_EVENT  . . . . . . . . . .	Number	 00000002h   
+NULL . . . . . . . . . . . . . .	Number	 00000000h   
+OPEN_ALWAYS  . . . . . . . . . .	Number	 00000004h   
+OPEN_EXISTING  . . . . . . . . .	Number	 00000003h   
+PeekConsoleInput . . . . . . . .	Text   	 PeekConsoleInputA
+ReadConsoleInput . . . . . . . .	Text   	 ReadConsoleInputA
+ReadConsole  . . . . . . . . . .	Text   	 ReadConsoleA
+STD_INPUT_HANDLE . . . . . . . .	Number	 -0000000Ah   
+STD_OUTPUT_HANDLE  . . . . . . .	Number	 -0000000Bh   
+SetConsoleTitle  . . . . . . . .	Text   	 SetConsoleTitleA
+TRUE . . . . . . . . . . . . . .	Number	 00000001h   
+TRUNCATE_EXISTING  . . . . . . .	Number	 00000005h   
+WINDOW_BUFFER_SIZE_EVENT . . . .	Number	 00000004h   
+WriteConsoleOutputCharacter  . .	Text   	 WriteConsoleOutputCharacterA
+WriteConsole . . . . . . . . . .	Text   	 WriteConsoleA
+black  . . . . . . . . . . . . .	Number	 00000000h   
+blue . . . . . . . . . . . . . .	Number	 00000001h   
+brown  . . . . . . . . . . . . .	Number	 00000006h   
+count  . . . . . . . . . . . . .	Byte	 00000058 _DATA	
+cyan . . . . . . . . . . . . . .	Number	 00000003h   
+exit . . . . . . . . . . . . . .	Text   	 INVOKE ExitProcess,0
+flag1  . . . . . . . . . . . . .	Byte	 0000018F _DATA	
+flag2  . . . . . . . . . . . . .	Byte	 00000190 _DATA	
+garbage  . . . . . . . . . . . .	DWord	 00000054 _DATA	
+gray . . . . . . . . . . . . . .	Number	 00000008h   
+green  . . . . . . . . . . . . .	Number	 00000002h   
+hide_month . . . . . . . . . . .	Byte	 0000006D _DATA	
+letter . . . . . . . . . . . . .	Byte	 0000018E _DATA	
+lightBlue  . . . . . . . . . . .	Number	 00000009h   
+lightCyan  . . . . . . . . . . .	Number	 0000000Bh   
+lightGray  . . . . . . . . . . .	Number	 00000007h   
+lightGreen . . . . . . . . . . .	Number	 0000000Ah   
+lightMagenta . . . . . . . . . .	Number	 0000000Dh   
+lightRed . . . . . . . . . . . .	Number	 0000000Ch   
+magenta  . . . . . . . . . . . .	Number	 00000005h   
+month10  . . . . . . . . . . . .	Byte	 0000003B _DATA	
+month11  . . . . . . . . . . . .	Byte	 00000042 _DATA	
+month12  . . . . . . . . . . . .	Byte	 0000004B _DATA	
+month1 . . . . . . . . . . . . .	Byte	 00000000 _DATA	
+month2 . . . . . . . . . . . . .	Byte	 00000008 _DATA	
+month3 . . . . . . . . . . . . .	Byte	 00000010 _DATA	
+month4 . . . . . . . . . . . . .	Byte	 00000016 _DATA	
+month5 . . . . . . . . . . . . .	Byte	 0000001C _DATA	
+month6 . . . . . . . . . . . . .	Byte	 00000020 _DATA	
+month7 . . . . . . . . . . . . .	Byte	 00000025 _DATA	
+month8 . . . . . . . . . . . . .	Byte	 0000002A _DATA	
+month9 . . . . . . . . . . . . .	Byte	 00000031 _DATA	
+monthC . . . . . . . . . . . . .	Byte	 00000063 _DATA	
+month  . . . . . . . . . . . . .	Byte	 00000059 _DATA	
+msg10  . . . . . . . . . . . . .	Byte	 0000013D _DATA	
+msg11  . . . . . . . . . . . . .	Byte	 0000014B _DATA	
+msg12  . . . . . . . . . . . . .	Byte	 0000016B _DATA	
+msg13  . . . . . . . . . . . . .	Byte	 0000017A _DATA	
+msg1 . . . . . . . . . . . . . .	Byte	 00000077 _DATA	
+msg2 . . . . . . . . . . . . . .	Byte	 000000A3 _DATA	
+msg3 . . . . . . . . . . . . . .	Byte	 000000B1 _DATA	
+msg4 . . . . . . . . . . . . . .	Byte	 000000BB _DATA	
+msg5 . . . . . . . . . . . . . .	Byte	 000000DE _DATA	
+msg6 . . . . . . . . . . . . . .	Byte	 000000E4 _DATA	
+msg7 . . . . . . . . . . . . . .	Byte	 000000F5 _DATA	
+msg8 . . . . . . . . . . . . . .	Byte	 00000107 _DATA	
+msg9 . . . . . . . . . . . . . .	Byte	 00000120 _DATA	
+numTry . . . . . . . . . . . . .	Byte	 0000018D _DATA	
+red  . . . . . . . . . . . . . .	Number	 00000004h   
+white  . . . . . . . . . . . . .	Number	 0000000Fh   
+yellow . . . . . . . . . . . . .	Number	 0000000Eh   
+
+	   0 Warnings
+	   0 Errors
