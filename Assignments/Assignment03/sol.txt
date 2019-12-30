@@ -1,0 +1,113 @@
+Name : SAOOD UR RAHMAN
+Roll NO : 17P-6092
+SECTION :	“A”
+
+
+
+
+			(1)(IN PROTECTED MODE)
+
+
+
+
+Include irvine32.inc
+BufSize = 65
+	
+.data
+	Str byte “protected mode”,0
+	str1 BYTE "Enter value :",0
+	str2 BYTE "output  = ",0
+
+	Buff_Val BYTE BufSize DUP(?)
+	std_In_Handle DWORD  ?
+	Read_Bytes DWORD ?
+	char_Vaue DWORD ?
+	ConsoleHandle DWORD ?
+	Written DWORD ?
+
+.code
+	Main proc
+		
+	mov edx, OFFSET str1
+	call writestring
+	call crlf
+
+	INVOKE GetStdHandle, STD_INPUT_HANDLE
+	mov std_In_Handle, eax
+	INVOKE ReadConsole, std_In_Handle, ADDR Buff_Val, BufSize, ADDR Read_Bytes, 0
+	mov edx, OFFSET Buff_Val
+	mov ecx, 16
+	mov ebx, TYPE Buff_Val
+	
+	mov edx, OFFSET str2
+	call writestring
+	call crlf
+
+
+	INVOKE GetStdHandle, STD_OUTPUT_HANDLE
+	mov ConsoleHandle, eax
+	INVOKE WriteConsole, ConsoleHandle, ADDR Buff_Val, BufSize, ADDR Written, 0	
+	call crlf
+	INVOKE ExitProcess, 0
+
+		
+	exit
+	Main endp
+End Main
+
+
+
+
+
+			
+
+			(2)(IN REAL MODE)
+
+
+INCLUDE IRVINE16.inc
+BufSize = 65
+	
+.data
+	Str byte “Real mode :”
+	str1 BYTE "Enter value : ",0
+	str2 BYTE "output = ",0
+
+	Buff_Val BYTE BufSize DUP(?)
+	std_In_Handle DWORD ?
+	Read_Bytes DWORD ?
+	char_Vaue DWORD ?
+	ConsoleHandle DWORD ?
+	Written DWORD ?
+
+.code
+	MAIN PROC
+	
+	mov ax,@data;initialize DS
+	mov ds,ax 
+	
+	mov edx, OFFSET str1
+	call writestring
+	call crlf
+	
+	INVOKE GetStdHandle, STD_INPUT_HANDLE
+	mov std_In_Handle, eax
+	INVOKE ReadConsole, std_In_Handle, ADDR Buff_Val, BufSize, ADDR Read_Bytes, 0
+	mov edx, OFFSET Buff_Val
+	mov ecx, 16
+	mov ebx, TYPE Buff_Val
+		
+	mov edx, OFFSET str2
+	call writestring
+	call crlf
+
+
+	INVOKE GetStdHandle, STD_OUTPUT_HANDLE
+	mov ConsoleHandle, eax
+	INVOKE WriteConsole, ConsoleHandle, ADDR Buff_Val, BufSize, ADDR	 Written, 0	
+	call crlf
+	INVOKE ExitProcess, 0
+
+	exit
+	Main endp
+End Main
+
